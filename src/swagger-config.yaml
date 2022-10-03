@@ -1,0 +1,1152 @@
+openapi: 3.0.0
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: main api server
+    url: http://185.128.137.193:30003/api
+  - description: mock api server
+    url: http://185.128.137.193:30004/api
+info:
+  description: This is a simple API
+  version: 1.1.0
+  title: Admin Panel
+  contact:
+    email: f.ahmadyf94@gmail.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: auth
+    description: login/confirmation endpoints to get access token
+  - name: roles
+    description: Role's management
+  - name: users
+    description: User's management
+  - name: watchlists
+    description: watchlists data
+  - name: filemanager
+    description: Filemanager's management
+  - name: portfolio
+    description: Portfolio data
+paths:
+  /auth/register:
+    post:
+      tags: 
+        - auth
+      summary: register
+      operationId: registerUser
+      description: 
+        1- use this end point for registeration <br>
+        2- after <b>200</b> response use endpoint <b>POST /auth/{uuid}</b> use userId as <b>"uuid"</b> as uuid prameter in url and code as "confirmCode" in body <br>
+        3- <b>Point:</b> parameter <b>code</b> wont be returned on final production version
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: refresh toekn which is used to refresh access token
+                  type: string
+                  format: /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-z]+)$/
+                captcha:
+                  description: google recaptcha code
+                  type: string
+              required:
+                - email
+      responses:
+        '200':
+          description: sends one time login code to email <br> <b>Point:</b> parameter <b>code</b> wont be returned on final production version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    description: uuid of user created
+                    type: "string"
+                    format: UUID
+                  code:
+                    description: confirmation code which will be send to provided email
+                    type: "string"
+        '400':
+          description: refresh token has not been sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: refresh token sent does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth:
+    post:
+      tags:
+        - auth
+      summary: forgot/onetimelogin
+      operationId: forgetPassword
+      description:
+        When trying to login by on time login code or forgot password use this endpoint <br>
+        1- use this end point for registeration <br>
+        2- after <b>200</b> response use endpoint <b>POST /auth/{uuid}</b> use userId as <b>"uuid"</b> as uuid prameter in url and code as "confirmCode" in body <br>
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: User's email
+                  type: string
+                  format: /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-z]+)$/
+              required: 
+                - email
+      responses:
+        '200':
+          description: sends one time login code to email <br> <b>Point:</b> parameter <b>code</b> wont be returned on final production version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    description: user's unique id
+                    type: string
+                    format: uid
+                  code:
+                    description: confirmation code which will be sent to user as email
+                    type: string
+                required: 
+                  - id
+        '400':
+          description: Parameter phone has not been sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User with specified email does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/{uuid}:
+    post:
+      tags:
+        - auth
+      summary: Confirm user's phone
+      operationId: confirmCode
+      description:
+        1- this endpoint needs <b>confirmCode</b> and <b>uuid</b> created from endpoints <b>"POST /auth/register"</b> or <b>"POST /auth"</b> <br>
+        2- after successful process with <b>200</b> status you can use <b>accessToken</b> to access other apis as <b>Header Authorization - Bearer TOKEN</b><br>
+        3- <b>Point:</b> inside swagger you should set accessToken on Authorize lock icon at the top right of documentation
+      parameters: 
+        - name: uuid
+          in: path
+          description: user's unique id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmCode:
+                  description: "Code that has been sent to user's phone"
+                  type: "string"
+              required: 
+                - "confirmCode"
+        description: Inventory item to add
+      responses:
+        '200':
+          description: Details about a user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    description: "access token for authentication"
+                    type: "string"
+                    format: JWT token
+                  refreshToken:
+                    description: "refresh token for refreshing token"
+                    type: "string"
+                    format: JWT token
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: parameter 'confirmCode' has not been sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: confirm code is wrong
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: user with specified uuid nubmer does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '406':
+          description: confirmation code has expired"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      tags: 
+        - auth
+      summary: login
+      operationId: userLogin
+      description: 
+        1- use this endpoint when trying to login by email/phone and password <br>
+        you can either enter <b>email</b> and <b>password</b> or <b>phone</b> and <b>password</b> <br>
+        2- after successful process with <b>200</b> status you can use <b>accessToken</b> to access other apis as <b>Header Authorization - Bearer TOKEN</b><br>
+        3- <b>Point:</b> inside swagger you should set accessToken on Authorize lock icon at the top right of documentation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: user's email
+                  type: string
+                  format: /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-z]+)$/
+                phone:
+                  description: user's phone number
+                  type: string
+                  format: /^09[0-9]{9}$/
+                password:
+                  description: user's password
+                  type: string
+              required:
+                - password
+      responses:
+        '200':
+          description: get new access and refresh tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                      description: access token for authentication
+                      type: "string"
+                      format: JWT token
+                  refreshToken:
+                      description: refresh token for refreshing token
+                      type: "string"
+                      format: JWT token
+                required: 
+                  - accessToken
+                    refreshToken
+        '400':
+          description: refresh token has not been sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: refresh token sent does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users:
+    get:
+      tags: 
+        - users
+      operationId: getUsers
+      description: Get user's details <br> Parameters are used to filter and sort data
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: post's count you want to retrieve
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: page you want too retrieve
+          schema:
+            type: integer
+        - name: s
+          in: query
+          description: query to search, it searchs in firstName and lastName
+          schema:
+            type: integer
+        - name: role
+          in: query
+          description: role/roles you want to search, if you want to search multiple role with OR condition use "|" between role unique ids
+          schema:
+            type: integer
+        - name: sortStatus
+          in: query
+          description: sort data by status (1 is ascending / 0 is descending)
+          schema: 
+            type: boolean
+        - name: sortCreatedAt
+          in: query
+          description: sort data by registration date (1 is ascending / 0 is descending)
+          schema: 
+            type: boolean
+      responses:
+        '200':
+          description: shows the role with specific ruid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: number
+        '403':
+          description: Token is not valid/being expired or user with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/{userId}:
+    get:
+      tags: 
+        - users
+      operationId: getUser
+      description: Get user's details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          description: unique id of user
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: shows the role with specific ruid
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: 
+        - users
+      operationId: updateUser
+      description: Update users's detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          description: unique id of user
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  description: phone of the user
+                  type: string
+                firstName:
+                  description: firstName of the user
+                  type: string
+                lastName:
+                  description: lastName of the user
+                  type: string
+                imageId:
+                  description: name of the user
+                  type: string
+                status:
+                  description: name of the user
+                  type: integer
+                roleId:
+                  description: name of the user
+                  type: string
+      responses:
+        '200':
+          description: return the updated user's detail
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /watchlists:
+    get:
+      tags: 
+        - watchlists
+      operationId: getWatchlists
+      description: Get list of watchlists
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: shows list of authonticated user's watchlists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Watchlist'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: 
+        - watchlists
+      operationId: addWatchlist
+      description: Add new watchlist to system
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: name of the new watchlist
+                  type: string
+              required:
+                - name
+      responses:
+        '200':
+          description: returns the new added watchlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /watchlists/{watchlistId}:
+    get:
+      tags: 
+        - watchlists
+      operationId: getWatchlist
+      description: Get watchlist's details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: watchlistId
+          in: path
+          description: unique id of watchlist
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: shows watchlist detailed data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Token is not valid/being expired or user with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: 
+        - watchlists
+      operationId: updateWatchlist
+      description: Update watchlist's details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: watchlistId
+          in: path
+          description: unique id of watchlist
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: new name of the watchlist
+                  type: string
+              required:
+                - name
+      responses:
+        '200':
+          description: shows watchlist detailed data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '204':
+          description: nothing changed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        '403':
+          description: Token is not valid/being expired or user with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: 
+        - watchlists
+      operationId: deleteWatchlist
+      description: delete watchlist with specified id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: watchlistId
+          in: path
+          description: unique id of watchlist
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: shows watchlist detailed data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Token is not valid/being expired or user with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /watchlists/{watchlistId}/coins:
+    post:
+      tags:
+        - watchlists
+      operationId: addCoinToWatchlist
+      description: adds coin id to specified watchlist
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: watchlistId
+          in: path
+          description: unique id of watchlist
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                coinId:
+                  description: coinId from coinStats
+                  type: string
+              required:
+                - coinId
+      responses:
+        '200':
+          description: shows watchlist detailed data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Token is not valid/being expired or user with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /watchlists/{watchlistId}/coins/{coinId}:
+    delete:
+      tags:
+        - watchlists
+      operationId: deleteCoinFromWatchlist
+      description: removes coin from specified watchlist by coin id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: watchlistId
+          in: path
+          description: unique id of watchlist
+          required: true
+          schema:
+            type: string
+        - name: coinId
+          in: path
+          description: unique id of coin
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: shows watchlist detailed data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Token is not valid/being expired or user with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /roles/permissions:
+    get:
+      tags: 
+        - roles
+      operationId: getPermissions
+      description: Get list of system permissions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: shows list of permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  label: 
+                    type: string
+                  permissions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        label:
+                          type: string
+                        permission:
+                          type: string
+  /roles:
+    get:
+      tags: 
+        - roles
+      operationId: getRoles
+      description: Get list of system roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: number of data returned (default 10)
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: page number (default 1)
+          schema:
+            type: integer
+        - name: sortStatus
+          in: query
+          description: sort data by status (1 is ascending / 0 is descending)
+          schema: 
+            type: boolean
+        - name: sortCreatedAt
+          in: query
+          description: sort data by registration date (1 is ascending / 0 is descending)
+          schema: 
+            type: boolean
+      responses:
+        '200':
+          description: returns list of roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
+                  total:
+                    type: number
+        '401':
+          description: anthrorized access to route or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: 
+        - roles
+      operationId: addRole
+      description: Add new role to system
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: name of the new role
+                  type: string
+                permissions:
+                  description: list of permissions key
+                  type: array
+                  items:
+                    type: string
+              required:
+                - name
+                - permissions
+      responses:
+        '200':
+          description: returns the new added role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /roles/{roeId}:
+    get:
+      tags: 
+        - roles
+      operationId: getRole
+      description: Get role details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roeId
+          in: path
+          description: unique id of department
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: shows the role with specific ruid
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Role with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: 
+        - roles
+      operationId: updateRole
+      description: Update role's name
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roeId
+          in: path
+          description: unique id of department
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: name of the new role
+                  type: string
+                permissions:
+                  description: list of permissions key
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: return the updated department's detail
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '403':
+          description: Token is not valid/being expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Role with specific id does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /filemanager:
+    post:
+      tags:
+        - filemanager
+      operationId: uploadFile
+      description: Upload new file
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multiple/form-data:
+            schema:
+              properties:
+                attachment:
+                  description: file to upload
+                  type: object
+      responses:
+        '200':
+          description: uploaded file details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fuid:
+                    description: uploaded file unique id
+                    type: "string"
+                    format: UUID
+                  updatedAt:
+                    description: uploaded file unique id
+                    type: "string"
+                    format: Timestamp
+                  createdAt:
+                    description: uploaded file unique id
+                    type: "string"
+                    format: Timestamp
+        '500':
+          description: Some server error happened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /filemanager/{fuid}:
+    get:
+      tags: 
+        - filemanager
+      operationId: getFile
+      description: Get file with specific id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fuid
+          in: path
+          description: unique id of specific file
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Details of requested file,
+          content:
+            image/:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File with specified id does not exit
+          content:
+            application/json":
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Something wend wrong when trying to get file from database
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Option:
+      type: object
+      properties:
+        optionKey":
+          type: "string"
+        optionValue:
+          type: "string"
+    Role:
+      type: object
+      properties:
+        id":
+          type: string
+          format: uuid
+        name:
+          type: string
+        permissionsList:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/Status'
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+          format: /09([0-9]{9})/
+        email:
+          type: string
+          format: /[a-zA-Z0-9]@[a-zA-Z0-9].[a-zA-Z0-9]*/
+        firstName:
+          type: string
+        lastName:
+          type: string
+        fullName:
+          type: string
+        imageId:
+          type: string
+        creditTime:
+          type: number
+          format: miliseconds
+        status:
+          $ref: '#/components/schemas/Status'
+        ip:
+          type: string
+        bannedTime:
+          type: string
+        createAt:
+          type: string
+        updatedAt:
+          type: string
+        role:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        permissions:
+          type: array
+          items:
+            type: string
+    Watchlist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+    Status:
+      type: object
+      properties:
+        code: 
+          type: number
+        label: 
+          type: string
+        color:
+          type: string
+        bg:
+          type: string
+    Error:
+      type: object
+      required:
+        - text
+        - message
+      properties:
+        text:
+          description: Persian description of error
+          type: string
+        message:
+          description: English description of error
+          type: string
